@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OpMo Podium Card Generator</title>
+<style>
+:root {
+  --bg:         #0d1117;
+  --surface:    #161b22;
+  --surface2:   #1c2128;
+  --border:     #30363d;
+  --text:       #e6edf3;
+  --muted:      #7d8590;
+  --accent:     #c4a87a;
+  --accent-dim: rgba(196,168,122,.12);
+  --radius:     12px;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 14px;
+  min-height: 100vh;
+}
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image:
+    linear-gradient(rgba(196,168,122,.018) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(196,168,122,.018) 1px, transparent 1px);
+  background-size: 52px 52px;
+  pointer-events: none; z-index: 0;
+}
+header {
+  position: relative; z-index: 1;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 16px 28px;
+  display: flex; align-items: center; gap: 12px;
+}
+.brand { font-size: 17px; font-weight: 700; color: var(--accent); }
+.brand span { color: var(--muted); font-weight: 400; font-size: 13px; margin-left: 6px; }
+
+.layout {
+  position: relative; z-index: 1;
+  display: flex;
+  max-width: 1180px; margin: 0 auto;
+  padding: 32px 24px;
+  gap: 32px;
+  align-items: flex-start;
+}
+
+/* ── Form ── */
+.form-panel {
+  flex: 1; min-width: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 28px;
+}
+.form-panel h2 { font-size: 15px; font-weight: 700; margin-bottom: 20px; color: var(--accent); }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.form-group { margin-bottom: 18px; }
+label {
+  display: block; font-size: 11px; font-weight: 700;
+  letter-spacing: .5px; text-transform: uppercase;
+  color: var(--accent); margin-bottom: 6px;
+}
+input, select {
+  width: 100%;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text); font-size: 14px;
+  padding: 10px 14px; outline: none;
+  transition: border-color .15s;
+  appearance: none; -webkit-appearance: none;
+}
+input:focus, select:focus { border-color: var(--accent); }
+input::placeholder { color: var(--muted); }
+select {
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%237d8590' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px;
+}
+select:disabled { opacity: .45; cursor: default; }
+
+/* Position pills */
+.pos-group { display: flex; gap: 10px; }
+.pos-pill {
+  flex: 1; border-radius: 10px; padding: 14px 8px;
+  text-align: center; cursor: pointer; border: 2px solid var(--border);
+  transition: border-color .15s, background .15s; user-select: none;
+}
+.pos-pill input[type=radio] { display: none; }
+.pos-pill .pos-medal { font-size: 28px; display: block; margin-bottom: 4px; }
+.pos-pill .pos-label { font-size: 13px; font-weight: 700; }
+.pos-pill .pos-sub   { font-size: 10px; color: var(--muted); }
+.pos-pill.p1 { border-color: #c4a87a; }
+.pos-pill.p1.selected { background: rgba(196,168,122,.15); border-color: #FFD700; }
+.pos-pill.p1.selected .pos-label { color: #FFD700; }
+.pos-pill.p2.selected { background: rgba(192,192,192,.12); border-color: #C0C0C0; }
+.pos-pill.p2.selected .pos-label { color: #C0C0C0; }
+.pos-pill.p3.selected { background: rgba(205,127,50,.15); border-color: #CD7F32; }
+.pos-pill.p3.selected .pos-label { color: #CD7F32; }
+
+/* Class pills */
+.class-group { display: flex; gap: 8px; flex-wrap: wrap; }
+.class-pill {
+  flex: 1; min-width: 60px;
+  border: 1px solid var(--border); border-radius: 8px;
+  padding: 8px 6px; text-align: center; cursor: pointer;
+  transition: border-color .15s, background .15s; user-select: none;
+}
+.class-pill input[type=radio] { display: none; }
+.class-pill:hover { border-color: var(--accent); background: var(--accent-dim); }
+.class-pill.selected { border-color: var(--accent); background: var(--accent-dim); }
+.pill-name { display: block; font-size: 13px; font-weight: 700; }
+.pill-sub  { display: block; font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+/* Optional toggle */
+.opt-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.opt-toggle {
+  width: 36px; height: 20px; background: var(--border);
+  border-radius: 10px; cursor: pointer; position: relative;
+  transition: background .15s; flex-shrink: 0;
+}
+.opt-toggle.on { background: var(--accent); }
+.opt-toggle::after {
+  content: ''; position: absolute;
+  width: 14px; height: 14px; border-radius: 50%;
+  background: #fff; top: 3px; left: 3px;
+  transition: left .15s;
+}
+.opt-toggle.on::after { left: 19px; }
+.opt-label { font-size: 12px; color: var(--muted); }
+
+.btn-download {
+  width: 100%; margin-top: 8px;
+  background: var(--accent); border: none; border-radius: 8px;
+  color: #0d1117; font-size: 15px; font-weight: 700;
+  padding: 13px; cursor: pointer; transition: opacity .15s;
+}
+.btn-download:hover { opacity: .88; }
+
+/* ── Preview ── */
+.preview-panel {
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+  position: sticky; top: 24px;
+}
+.preview-panel h2 {
+  font-size: 11px; font-weight: 700; color: var(--muted);
+  letter-spacing: 1px; text-transform: uppercase;
+}
+#card-canvas {
+  border-radius: 16px;
+  box-shadow: 0 8px 48px rgba(0,0,0,.7);
+  max-width: 100%;
+}
+.preview-note { font-size: 11px; color: var(--muted); text-align: center; }
+
+@media (max-width: 820px) {
+  .layout { flex-direction: column; }
+  .form-row { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">OpMo Podium Card Generator <span>Season 13 — Instagram &amp; Facebook</span></div>
+</header>
+
+<div class="layout">
+
+  <!-- Form -->
+  <div class="form-panel">
+    <h2>Podium Details</h2>
+
+    <!-- Position -->
+    <div class="form-group">
+      <label>Finishing Position</label>
+      <div class="pos-group">
+        <label class="pos-pill p1 selected" id="pill-p1" onclick="selectPos(1,this)">
+          <input type="radio" name="pos" value="1" checked>
+          <span class="pos-medal">🥇</span>
+          <span class="pos-label">P1</span>
+          <span class="pos-sub">Winner</span>
+        </label>
+        <label class="pos-pill p2" id="pill-p2" onclick="selectPos(2,this)">
+          <input type="radio" name="pos" value="2">
+          <span class="pos-medal">🥈</span>
+          <span class="pos-label">P2</span>
+          <span class="pos-sub">2nd Place</span>
+        </label>
+        <label class="pos-pill p3" id="pill-p3" onclick="selectPos(3,this)">
+          <input type="radio" name="pos" value="3">
+          <span class="pos-medal">🥉</span>
+          <span class="pos-label">P3</span>
+          <span class="pos-sub">3rd Place</span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Names + Number -->
+    <div class="form-row">
+      <div class="form-group">
+        <label for="inp-first">First Name</label>
+        <input type="text" id="inp-first" placeholder="James" oninput="render()">
+      </div>
+      <div class="form-group">
+        <label for="inp-last">Last Name</label>
+        <input type="text" id="inp-last" placeholder="Anderson" oninput="render()">
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label for="inp-num">Car Number</label>
+        <input type="text" id="inp-num" placeholder="17" oninput="render()">
+      </div>
+      <div class="form-group">
+        <label for="inp-team">Team Name</label>
+        <input type="text" id="inp-team" placeholder="OpMo Endurance" oninput="render()">
+      </div>
+    </div>
+
+    <!-- Race Info -->
+    <div class="form-group">
+      <label for="inp-race">Race / Round</label>
+      <input type="text" id="inp-race" placeholder="e.g. Round 4 — Spa-Francorchamps" oninput="render()">
+    </div>
+
+    <!-- Driver Class -->
+    <div class="form-group">
+      <label>Driver Class</label>
+      <div class="class-group">
+        <label class="class-pill" onclick="selectClass('Beneficiary',this)">
+          <input type="radio" name="dclass" value="Beneficiary">
+          <span class="pill-name">Beneficiary</span>
+          <span class="pill-sub">LMP2 / GT3</span>
+        </label>
+        <label class="class-pill" onclick="selectClass('Pro-Ben',this)">
+          <input type="radio" name="dclass" value="Pro-Ben">
+          <span class="pill-name">Pro-Ben</span>
+          <span class="pill-sub">GTP</span>
+        </label>
+        <label class="class-pill" onclick="selectClass('Pro',this)">
+          <input type="radio" name="dclass" value="Pro">
+          <span class="pill-name">Pro</span>
+          <span class="pill-sub">GTP</span>
+        </label>
+        <label class="class-pill" onclick="selectClass('Open',this)">
+          <input type="radio" name="dclass" value="Open">
+          <span class="pill-name">Open</span>
+          <span class="pill-sub">GT3</span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Car Class + Car -->
+    <div class="form-group">
+      <label>Car Class</label>
+      <div class="class-group" id="carclass-group">
+        <label class="class-pill" onclick="selectCarClass('GTP',this)">
+          <input type="radio" name="carclass" value="GTP">
+          <span class="pill-name">GTP</span>
+        </label>
+        <label class="class-pill" onclick="selectCarClass('LMP2',this)">
+          <input type="radio" name="carclass" value="LMP2">
+          <span class="pill-name">LMP2</span>
+        </label>
+        <label class="class-pill" onclick="selectCarClass('GT3',this)">
+          <input type="radio" name="carclass" value="GT3">
+          <span class="pill-name">GT3</span>
+        </label>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="car-select">Car</label>
+      <select id="car-select" onchange="render()" disabled>
+        <option value="">— Select car class first —</option>
+      </select>
+    </div>
+
+    <!-- Optional: Fastest Lap -->
+    <div class="opt-row">
+      <div class="opt-toggle" id="fl-toggle" onclick="toggleOpt('fl')"></div>
+      <span class="opt-label">Show Fastest Lap</span>
+    </div>
+    <div class="form-group" id="fl-group" style="display:none">
+      <label for="inp-fl">Fastest Lap Time</label>
+      <input type="text" id="inp-fl" placeholder="e.g. 2:17.843" oninput="render()">
+    </div>
+
+    <!-- Optional: Gap -->
+    <div class="opt-row">
+      <div class="opt-toggle" id="gap-toggle" onclick="toggleOpt('gap')"></div>
+      <span class="opt-label">Show Gap / Interval</span>
+    </div>
+    <div class="form-group" id="gap-group" style="display:none">
+      <label for="inp-gap">Gap to Winner / Ahead</label>
+      <input type="text" id="inp-gap" placeholder="e.g. +4.217s  or  Winner" oninput="render()">
+    </div>
+
+    <button class="btn-download" onclick="downloadCard()">⬇ Download 1080×1080 PNG</button>
+  </div>
+
+  <!-- Preview -->
+  <div class="preview-panel">
+    <h2>Preview</h2>
+    <canvas id="card-canvas" width="540" height="540"></canvas>
+    <div class="preview-note">Preview at 540×540 · Downloads at full 1080×1080</div>
+  </div>
+
+</div>
+
+<script>
+// ── Data ──────────────────────────────────────────────────────────────────────
+const CARS = {
+  GTP:  ['Acura ARX-06 GTP','Cadillac V-Series.R GTP','Porsche 963 GTP','BMW M Hybrid V8 GTP','Ferrari 499P','Lamborghini SC63 GTP','Toyota GR010 Hybrid'],
+  LMP2: ['Dallara P217 LMP2'],
+  GT3:  ['Aston Martin Vantage GT3','BMW M4 GT3','Chevrolet Corvette Z06 GT3.R','Ferrari 296 GT3','Ford Mustang GT3','Lamborghini Huracán GT3 EVO2','McLaren 720S GT3 EVO','Mercedes-AMG GT3 EVO','Porsche 992 GT3 R','Audi R8 LMS GT3 EVO II']
+};
+
+const POS_THEMES = {
+  1: {
+    accent:    '#FFD700',
+    mid:       '#c4a87a',
+    dark:      '#7a5c1e',
+    glow:      'rgba(255,215,0,0.45)',
+    dim:       'rgba(255,215,0,0.12)',
+    label:     'P1',
+    title:     'RACE WINNER',
+    particles: true,
+  },
+  2: {
+    accent:    '#D8D8D8',
+    mid:       '#a0a0a0',
+    dark:      '#606060',
+    glow:      'rgba(210,210,210,0.35)',
+    dim:       'rgba(210,210,210,0.10)',
+    label:     'P2',
+    title:     'PODIUM FINISH',
+    particles: false,
+  },
+  3: {
+    accent:    '#CD7F32',
+    mid:       '#a0621e',
+    dark:      '#6b3d0e',
+    glow:      'rgba(205,127,50,0.40)',
+    dim:       'rgba(205,127,50,0.12)',
+    label:     'P3',
+    title:     'PODIUM FINISH',
+    particles: false,
+  },
+};
+
+const CLASS_COLORS = { 'Beneficiary':'#3fb950','Pro-Ben':'#58a6ff','Pro':'#f85149','Open':'#e3b341' };
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let selectedPos      = 1;
+let selectedClass    = '';
+let selectedCarClass = '';
+let showFL           = false;
+let showGap          = false;
+let logoImg          = null;
+let confettiSeeds    = generateSeeds(60);
+
+const _logo = new Image();
+_logo.onload  = () => { logoImg = _logo; render(); };
+_logo.onerror = () => { logoImg = null;  render(); };
+_logo.src = 'OpMo_eMotorsport_League_red_TPBG_NEG.png';
+
+function generateSeeds(n) {
+  const s = [];
+  for (let i = 0; i < n; i++) {
+    s.push({ x: Math.random(), y: Math.random(), r: 2 + Math.random() * 4, a: Math.random() * Math.PI * 2, c: i % 5 });
+  }
+  return s;
+}
+
+// ── UI ────────────────────────────────────────────────────────────────────────
+function selectPos(n, el) {
+  selectedPos = n;
+  document.querySelectorAll('.pos-pill').forEach(p => p.classList.remove('selected'));
+  el.classList.add('selected');
+  render();
+}
+function selectClass(val, el) {
+  selectedClass = val;
+  document.querySelectorAll('.class-group:first-of-type .class-pill').forEach(p => p.classList.remove('selected'));
+  el.classList.add('selected');
+  render();
+}
+function selectCarClass(val, el) {
+  selectedCarClass = val;
+  document.querySelectorAll('#carclass-group .class-pill').forEach(p => p.classList.remove('selected'));
+  el.classList.add('selected');
+  const sel = document.getElementById('car-select');
+  sel.disabled = false;
+  sel.innerHTML = CARS[val].map(c => `<option value="${c}">${c}</option>`).join('');
+  render();
+}
+function toggleOpt(key) {
+  if (key === 'fl') {
+    showFL = !showFL;
+    document.getElementById('fl-toggle').classList.toggle('on', showFL);
+    document.getElementById('fl-group').style.display = showFL ? '' : 'none';
+  } else {
+    showGap = !showGap;
+    document.getElementById('gap-toggle').classList.toggle('on', showGap);
+    document.getElementById('gap-group').style.display = showGap ? '' : 'none';
+  }
+  render();
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+const PREVIEW_SIZE = 540;
+const FULL_SIZE    = 1080;
+
+function render() { drawCard(document.getElementById('card-canvas'), PREVIEW_SIZE); }
+
+function drawCard(canvas, size) {
+  const ctx  = canvas.getContext('2d');
+  const S    = size;
+  const t    = POS_THEMES[selectedPos];
+  const scale = S / 1080;
+
+  canvas.width  = S;
+  canvas.height = S;
+
+  const first  = document.getElementById('inp-first').value.trim() || 'First';
+  const last   = document.getElementById('inp-last').value.trim()  || 'Last';
+  const num    = document.getElementById('inp-num').value.trim()   || '00';
+  const team   = document.getElementById('inp-team').value.trim()  || 'Team Name';
+  const race   = document.getElementById('inp-race').value.trim()  || 'Round — Track Name';
+  const car    = document.getElementById('car-select').value       || 'Select a car';
+  const dClass = selectedClass    || 'Class';
+  const cClass = selectedCarClass || '';
+  const fl     = showFL  ? (document.getElementById('inp-fl').value.trim()  || '0:00.000') : null;
+  const gap    = showGap ? (document.getElementById('inp-gap').value.trim() || '+0.000s')  : null;
+
+  const px = v => v * scale;  // scale helper
+
+  // ── Background ──
+  const bgG = ctx.createLinearGradient(0, 0, S, S);
+  bgG.addColorStop(0, '#0d1117');
+  bgG.addColorStop(0.6, '#0f1520');
+  bgG.addColorStop(1, '#080c12');
+  ctx.fillStyle = bgG;
+  ctx.fillRect(0, 0, S, S);
+
+  // ── Grid ──
+  ctx.save();
+  ctx.strokeStyle = 'rgba(196,168,122,0.035)';
+  ctx.lineWidth = 1;
+  const gStep = px(54);
+  for (let x = 0; x < S; x += gStep) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,S); ctx.stroke(); }
+  for (let y = 0; y < S; y += gStep) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(S,y); ctx.stroke(); }
+  ctx.restore();
+
+  // ── Radial glow centre ──
+  ctx.save();
+  const glow = ctx.createRadialGradient(S/2, S*0.42, 0, S/2, S*0.42, S*0.55);
+  glow.addColorStop(0, t.dim);
+  glow.addColorStop(1, 'transparent');
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 0, S, S);
+  ctx.restore();
+
+  // ── Confetti (P1 only) ──
+  if (t.particles) {
+    const confColors = [t.accent, '#ffffff', '#ff4444', '#4488ff', t.mid];
+    confettiSeeds.forEach(seed => {
+      ctx.save();
+      ctx.globalAlpha = 0.55;
+      ctx.fillStyle = confColors[seed.c];
+      ctx.translate(seed.x * S, seed.y * S);
+      ctx.rotate(seed.a);
+      const r = seed.r * scale;
+      ctx.fillRect(-r, -r * 2.5, r * 2, r * 5);
+      ctx.restore();
+    });
+  }
+
+  // ── Top accent bar ──
+  const topH = px(80);
+  const topG = ctx.createLinearGradient(0, 0, S, 0);
+  topG.addColorStop(0, t.accent);
+  topG.addColorStop(1, t.dark);
+  ctx.fillStyle = topG;
+  ctx.fillRect(0, 0, S, topH);
+
+  // Logo in top bar
+  if (logoImg) {
+    const lh = px(54);
+    const lw = logoImg.width * (lh / logoImg.height);
+    const maxW = S * 0.45;
+    const dw = Math.min(lw, maxW);
+    const dh = logoImg.height * (dw / logoImg.width);
+    ctx.drawImage(logoImg, px(18), (topH - dh) / 2, dw, dh);
+  } else {
+    ctx.fillStyle = '#0d1117';
+    ctx.font = `bold ${px(20)}px system-ui,sans-serif`;
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.fillText('OPERATION eMOTORSPORT', px(18), topH / 2);
+  }
+
+  // Season badge top-right
+  const badgeW = px(130), badgeH = px(38), badgeX = S - badgeW - px(18), badgeY = (topH - badgeH) / 2;
+  ctx.fillStyle = 'rgba(0,0,0,0.35)';
+  ctx.beginPath(); ctx.roundRect(badgeX, badgeY, badgeW, badgeH, px(8)); ctx.fill();
+  ctx.fillStyle = '#0d1117';
+  ctx.font = `bold ${px(14)}px system-ui,sans-serif`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('SEASON 13', badgeX + badgeW / 2, topH / 2);
+
+  // ── Big position label ──
+  ctx.save();
+  ctx.shadowColor = t.glow;
+  ctx.shadowBlur  = px(60);
+  const posG = ctx.createLinearGradient(0, px(90), 0, px(340));
+  posG.addColorStop(0, '#ffffff');
+  posG.addColorStop(0.3, t.accent);
+  posG.addColorStop(1, t.mid);
+  ctx.fillStyle = posG;
+  ctx.font = `900 ${px(260)}px 'Arial Black',Arial,sans-serif`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  ctx.fillText(t.label, S / 2, px(76));
+  ctx.restore();
+
+  // ── TITLE TEXT under position ──
+  ctx.fillStyle = t.accent;
+  ctx.font = `bold ${px(22)}px system-ui,sans-serif`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+  // Letter spacing simulation
+  const titleText = t.title;
+  ctx.letterSpacing = `${px(4)}px`;
+  ctx.fillText(titleText, S / 2, px(368));
+  ctx.letterSpacing = '0px';
+
+  // ── Divider ──
+  const divY = px(386);
+  const divG = ctx.createLinearGradient(px(80), 0, S - px(80), 0);
+  divG.addColorStop(0, 'transparent');
+  divG.addColorStop(0.15, t.accent);
+  divG.addColorStop(0.85, t.accent);
+  divG.addColorStop(1, 'transparent');
+  ctx.strokeStyle = divG;
+  ctx.lineWidth = px(2);
+  ctx.beginPath(); ctx.moveTo(px(80), divY); ctx.lineTo(S - px(80), divY); ctx.stroke();
+
+  // ── Driver number circle (left of name) ──
+  const ncy = px(430), ncx = px(110), ncr = px(48);
+  ctx.save();
+  ctx.shadowColor = t.glow; ctx.shadowBlur = px(20);
+  ctx.beginPath(); ctx.arc(ncx, ncy, ncr, 0, Math.PI * 2);
+  const circG = ctx.createRadialGradient(ncx, ncy - px(10), px(5), ncx, ncy, ncr);
+  circG.addColorStop(0, t.accent); circG.addColorStop(1, t.dark);
+  ctx.fillStyle = circG; ctx.fill(); ctx.restore();
+  ctx.fillStyle = '#0d1117';
+  const numSize = num.length > 2 ? px(28) : px(36);
+  ctx.font = `bold ${numSize}px 'Arial Black',Arial,sans-serif`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(num, ncx, ncy);
+
+  // ── Driver name ──
+  const nameX = px(174);
+  ctx.fillStyle = 'rgba(255,255,255,0.65)';
+  ctx.font = `300 ${px(22)}px system-ui,sans-serif`;
+  ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+  ctx.fillText(first.toUpperCase(), nameX, ncy - px(18));
+
+  ctx.save();
+  ctx.shadowColor = 'rgba(0,0,0,0.6)'; ctx.shadowBlur = px(8);
+  ctx.fillStyle = '#ffffff';
+  let ls = px(52);
+  ctx.font = `bold ${ls}px 'Arial Black',Arial,sans-serif`;
+  while (ctx.measureText(last.toUpperCase()).width > S - nameX - px(20) && ls > px(24)) {
+    ls -= px(2);
+    ctx.font = `bold ${ls}px 'Arial Black',Arial,sans-serif`;
+  }
+  ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+  ctx.fillText(last.toUpperCase(), nameX, ncy + px(30));
+  ctx.restore();
+
+  // ── Class badges ──
+  const bc = CLASS_COLORS[dClass] || t.accent;
+  const bY = ncy + px(48);
+  ctx.fillStyle = bc + '33';
+  ctx.beginPath(); ctx.roundRect(nameX, bY, px(110), px(26), px(13)); ctx.fill();
+  ctx.strokeStyle = bc; ctx.lineWidth = px(1.5); ctx.stroke();
+  ctx.fillStyle = bc;
+  ctx.font = `bold ${px(12)}px system-ui,sans-serif`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(dClass.toUpperCase(), nameX + px(55), bY + px(13));
+  if (cClass) {
+    const ccX = nameX + px(118);
+    ctx.fillStyle = 'rgba(255,255,255,0.07)';
+    ctx.beginPath(); ctx.roundRect(ccX, bY, px(54), px(26), px(13)); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.18)'; ctx.lineWidth = px(1); ctx.stroke();
+    ctx.fillStyle = '#e6edf3';
+    ctx.font = `bold ${px(12)}px system-ui,sans-serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(cClass, ccX + px(27), bY + px(13));
+  }
+
+  // ── Info section ──
+  const infoY = px(540);
+  const infoG = ctx.createLinearGradient(0, infoY - px(20), 0, infoY + px(160));
+  infoG.addColorStop(0, 'transparent');
+  infoG.addColorStop(0.3, 'rgba(255,255,255,0.03)');
+  infoG.addColorStop(1, 'rgba(255,255,255,0.05)');
+  ctx.fillStyle = infoG;
+  ctx.fillRect(0, infoY - px(20), S, px(190));
+
+  // Info items - build list based on what's shown
+  const infoItems = [
+    { label: 'RACE',  value: race },
+    { label: 'TEAM',  value: team },
+    { label: 'CAR',   value: car  },
+  ];
+  if (fl)  infoItems.push({ label: 'FASTEST LAP', value: '⚡ ' + fl,  color: '#f85149' });
+  if (gap) infoItems.push({ label: 'INTERVAL',    value: gap });
+
+  const cols = infoItems.length <= 3 ? 1 : 2;
+  const colW = S / cols;
+
+  infoItems.forEach((item, i) => {
+    const col = i % cols;
+    const row = Math.floor(i / cols);
+    const ix  = col * colW + px(24);
+    const iy  = infoY + row * px(60);
+
+    ctx.fillStyle = item.color || t.accent;
+    ctx.font = `bold ${px(11)}px system-ui,sans-serif`;
+    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+    ctx.fillText(item.label, ix, iy);
+
+    ctx.fillStyle = '#e6edf3';
+    let vs = px(18); ctx.font = `bold ${vs}px system-ui,sans-serif`;
+    while (ctx.measureText(item.value).width > colW - px(48) && vs > px(11)) {
+      vs -= px(1); ctx.font = `bold ${vs}px system-ui,sans-serif`;
+    }
+    ctx.fillText(item.value, ix, iy + px(22));
+  });
+
+  // ── Bottom bar ──
+  const botH = px(58), botY = S - botH;
+  const botG = ctx.createLinearGradient(0, 0, S, 0);
+  botG.addColorStop(0, t.dark); botG.addColorStop(1, t.accent);
+  ctx.fillStyle = botG;
+  ctx.fillRect(0, botY, S, botH);
+
+  ctx.fillStyle = '#0d1117';
+  ctx.font = `bold ${px(13)}px system-ui,sans-serif`;
+  ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  ctx.fillText('OPERATION eMOTORSPORT LEAGUE', px(20), botY + botH / 2);
+
+  ctx.fillStyle = 'rgba(0,0,0,0.4)';
+  ctx.font = `bold ${px(13)}px system-ui,sans-serif`;
+  ctx.textAlign = 'right';
+  ctx.fillText('operationmotorsport.org', S - px(20), botY + botH / 2);
+
+  // ── Border glow ──
+  ctx.save();
+  ctx.strokeStyle = t.accent; ctx.lineWidth = px(3); ctx.globalAlpha = 0.5;
+  ctx.strokeRect(px(1.5), px(1.5), S - px(3), S - px(3));
+  ctx.restore();
+}
+
+// ── Download ──────────────────────────────────────────────────────────────────
+function downloadCard() {
+  const offscreen = document.createElement('canvas');
+  drawCard(offscreen, FULL_SIZE);
+  const first = document.getElementById('inp-first').value.trim() || 'Driver';
+  const last  = document.getElementById('inp-last').value.trim()  || 'Card';
+  const pos   = POS_THEMES[selectedPos].label;
+  const link  = document.createElement('a');
+  link.download = `OpMo_S13_${pos}_${first}_${last}.png`;
+  link.href = offscreen.toDataURL('image/png');
+  link.click();
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+render();
+</script>
+</body>
+</html>
