@@ -446,7 +446,7 @@ function drawCard(canvas, size) {
   ctx.fillRect(0, 0, S, S);
 
   // ── Top bar ──
-  const topH = px(86);
+  const topH = px(106);
   const topG = ctx.createLinearGradient(0, 0, S, 0);
   topG.addColorStop(0, t.accent);
   topG.addColorStop(1, t.dark);
@@ -454,8 +454,8 @@ function drawCard(canvas, size) {
   ctx.fillRect(0, 0, S, topH);
 
   if (logoImg) {
-    const lh = px(58); const lw = logoImg.width * (lh / logoImg.height);
-    const dw = Math.min(lw, S * 0.45); const dh = logoImg.height * (dw / logoImg.width);
+    const lh = px(78); const lw = logoImg.width * (lh / logoImg.height);
+    const dw = Math.min(lw, S * 0.48); const dh = logoImg.height * (dw / logoImg.width);
     ctx.drawImage(logoImg, px(18), (topH - dh) / 2, dw, dh);
   } else {
     ctx.fillStyle = '#0d1117'; ctx.font = `bold ${px(22)}px system-ui,sans-serif`;
@@ -464,10 +464,10 @@ function drawCard(canvas, size) {
   }
 
   // Season badge
-  const bW = px(138), bH = px(40), bX = S - bW - px(18), bY0 = (topH - bH) / 2;
+  const bW = px(174), bH = px(52), bX = S - bW - px(18), bY0 = (topH - bH) / 2;
   ctx.fillStyle = 'rgba(0,0,0,0.35)';
-  ctx.beginPath(); ctx.roundRect(bX, bY0, bW, bH, px(8)); ctx.fill();
-  ctx.fillStyle = '#0d1117'; ctx.font = `bold ${px(15)}px system-ui,sans-serif`;
+  ctx.beginPath(); ctx.roundRect(bX, bY0, bW, bH, px(10)); ctx.fill();
+  ctx.fillStyle = '#0d1117'; ctx.font = `bold ${px(20)}px system-ui,sans-serif`;
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillText('SEASON 13', bX + bW / 2, topH / 2);
 
@@ -582,14 +582,14 @@ function drawCard(canvas, size) {
   });
 
   // ── Bottom bar ──
-  const botH = px(64), botY = S - botH;
+  const botH = px(82), botY = S - botH;
   const botG = ctx.createLinearGradient(0, 0, S, 0);
   botG.addColorStop(0, t.dark); botG.addColorStop(1, t.accent);
   ctx.fillStyle = botG; ctx.fillRect(0, botY, S, botH);
-  ctx.fillStyle = '#0d1117'; ctx.font = `bold ${px(15)}px system-ui,sans-serif`;
+  ctx.fillStyle = '#0d1117'; ctx.font = `bold ${px(20)}px system-ui,sans-serif`;
   ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
   ctx.fillText('OPERATION eMOTORSPORT LEAGUE', px(22), botY + botH / 2);
-  ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.font = `bold ${px(14)}px system-ui,sans-serif`;
+  ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.font = `bold ${px(18)}px system-ui,sans-serif`;
   ctx.textAlign = 'right';
   ctx.fillText('operationmotorsport.org', S - px(22), botY + botH / 2);
 
