@@ -120,23 +120,6 @@ select:disabled { opacity: .45; cursor: default; }
 .pill-name { display: block; font-size: 13px; font-weight: 700; }
 .pill-sub  { display: block; font-size: 10px; color: var(--muted); margin-top: 2px; }
 
-/* Optional toggle */
-.opt-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
-.opt-toggle {
-  width: 36px; height: 20px; background: var(--border);
-  border-radius: 10px; cursor: pointer; position: relative;
-  transition: background .15s; flex-shrink: 0;
-}
-.opt-toggle.on { background: var(--accent); }
-.opt-toggle::after {
-  content: ''; position: absolute;
-  width: 14px; height: 14px; border-radius: 50%;
-  background: #fff; top: 3px; left: 3px;
-  transition: left .15s;
-}
-.opt-toggle.on::after { left: 19px; }
-.opt-label { font-size: 12px; color: var(--muted); }
-
 .btn-download {
   width: 100%; margin-top: 8px;
   background: var(--accent); border: none; border-radius: 8px;
@@ -286,26 +269,6 @@ select:disabled { opacity: .45; cursor: default; }
       </select>
     </div>
 
-    <!-- Optional: Fastest Lap -->
-    <div class="opt-row">
-      <div class="opt-toggle" id="fl-toggle" onclick="toggleOpt('fl')"></div>
-      <span class="opt-label">Show Fastest Lap</span>
-    </div>
-    <div class="form-group" id="fl-group" style="display:none">
-      <label for="inp-fl">Fastest Lap Time</label>
-      <input type="text" id="inp-fl" placeholder="e.g. 2:17.843" oninput="render()">
-    </div>
-
-    <!-- Optional: Gap -->
-    <div class="opt-row">
-      <div class="opt-toggle" id="gap-toggle" onclick="toggleOpt('gap')"></div>
-      <span class="opt-label">Show Gap / Interval</span>
-    </div>
-    <div class="form-group" id="gap-group" style="display:none">
-      <label for="inp-gap">Gap to Winner / Ahead</label>
-      <input type="text" id="inp-gap" placeholder="e.g. +4.217s  or  Winner" oninput="render()">
-    </div>
-
     <button class="btn-download" onclick="downloadCard()">⬇ Download 1080×1080 PNG</button>
   </div>
 
@@ -365,8 +328,6 @@ const CLASS_COLORS = { 'Beneficiary':'#3fb950','Pro-Ben':'#58a6ff','Pro':'#f8514
 let selectedPos      = 1;
 let selectedClass    = '';
 let selectedCarClass = '';
-let showFL           = false;
-let showGap          = false;
 let logoImg          = null;
 let confettiSeeds    = generateSeeds(60);
 
@@ -405,30 +366,52 @@ function selectCarClass(val, el) {
   sel.innerHTML = CARS[val].map(c => `<option value="${c}">${c}</option>`).join('');
   render();
 }
-function toggleOpt(key) {
-  if (key === 'fl') {
-    showFL = !showFL;
-    document.getElementById('fl-toggle').classList.toggle('on', showFL);
-    document.getElementById('fl-group').style.display = showFL ? '' : 'none';
-  } else {
-    showGap = !showGap;
-    document.getElementById('gap-toggle').classList.toggle('on', showGap);
-    document.getElementById('gap-group').style.display = showGap ? '' : 'none';
-  }
-  render();
-}
-
 // ── Render ────────────────────────────────────────────────────────────────────
 const PREVIEW_SIZE = 540;
 const FULL_SIZE    = 1080;
 
 function render() { drawCard(document.getElementById('card-canvas'), PREVIEW_SIZE); }
 
+// Build a billowing checkered flag on an offscreen canvas, return it
+function makeBillowingFlag(S) {
+  const sq  = Math.round(S / 9);       // checker square size
+  const amp = S * 0.032;               // wave amplitude
+  const freq = 2.8;                    // waves across height
+  const stripH = Math.max(2, Math.round(S / 270)); // strip height for smooth warp
+
+  // Flat checker on oversized offscreen (extra width to cover wave shift)
+  const pad = Math.ceil(amp) + sq;
+  const off = document.createElement('canvas');
+  off.width  = S + pad * 2;
+  off.height = S + sq;
+  const octx = off.getContext('2d');
+  const cols = Math.ceil(off.width  / sq) + 1;
+  const rows = Math.ceil(off.height / sq) + 1;
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      octx.fillStyle = (r + c) % 2 === 0 ? 'rgba(255,255,255,0.13)' : 'rgba(0,0,0,0.0)';
+      octx.fillRect(c * sq - pad, r * sq, sq, sq);
+    }
+  }
+
+  // Warp onto result canvas strip by strip
+  const result = document.createElement('canvas');
+  result.width  = S;
+  result.height = S;
+  const rctx = result.getContext('2d');
+  for (let y = 0; y < S; y += stripH) {
+    const xShift = amp * Math.sin((y / S) * freq * Math.PI * 2 - 0.4);
+    rctx.drawImage(off, pad + xShift, y, S, stripH, 0, y, S, stripH);
+  }
+  return result;
+}
+
 function drawCard(canvas, size) {
-  const ctx  = canvas.getContext('2d');
-  const S    = size;
-  const t    = POS_THEMES[selectedPos];
+  const ctx   = canvas.getContext('2d');
+  const S     = size;
+  const t     = POS_THEMES[selectedPos];
   const scale = S / 1080;
+  const px    = v => v * scale;
 
   canvas.width  = S;
   canvas.height = S;
@@ -441,234 +424,178 @@ function drawCard(canvas, size) {
   const car    = document.getElementById('car-select').value       || 'Select a car';
   const dClass = selectedClass    || 'Class';
   const cClass = selectedCarClass || '';
-  const fl     = showFL  ? (document.getElementById('inp-fl').value.trim()  || '0:00.000') : null;
-  const gap    = showGap ? (document.getElementById('inp-gap').value.trim() || '+0.000s')  : null;
-
-  const px = v => v * scale;  // scale helper
-
-  // ── Background ──
-  const bgG = ctx.createLinearGradient(0, 0, S, S);
-  bgG.addColorStop(0, '#0d1117');
-  bgG.addColorStop(0.6, '#0f1520');
-  bgG.addColorStop(1, '#080c12');
-  ctx.fillStyle = bgG;
+  // ── Dark base ──
+  ctx.fillStyle = '#08090d';
   ctx.fillRect(0, 0, S, S);
 
-  // ── Grid ──
-  ctx.save();
-  ctx.strokeStyle = 'rgba(196,168,122,0.035)';
-  ctx.lineWidth = 1;
-  const gStep = px(54);
-  for (let x = 0; x < S; x += gStep) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,S); ctx.stroke(); }
-  for (let y = 0; y < S; y += gStep) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(S,y); ctx.stroke(); }
-  ctx.restore();
+  // ── Billowing checkered flag ──
+  ctx.drawImage(makeBillowingFlag(S), 0, 0);
 
-  // ── Radial glow centre ──
-  ctx.save();
-  const glow = ctx.createRadialGradient(S/2, S*0.42, 0, S/2, S*0.42, S*0.55);
+  // ── Dark vignette overlay so content stays readable ──
+  const vig = ctx.createRadialGradient(S/2, S/2, S*0.15, S/2, S/2, S*0.75);
+  vig.addColorStop(0, 'rgba(8,9,13,0.55)');
+  vig.addColorStop(1, 'rgba(8,9,13,0.88)');
+  ctx.fillStyle = vig;
+  ctx.fillRect(0, 0, S, S);
+
+  // ── Coloured radial glow ──
+  const glow = ctx.createRadialGradient(S/2, S*0.44, 0, S/2, S*0.44, S*0.52);
   glow.addColorStop(0, t.dim);
   glow.addColorStop(1, 'transparent');
   ctx.fillStyle = glow;
   ctx.fillRect(0, 0, S, S);
-  ctx.restore();
 
-  // ── Confetti (P1 only) ──
-  if (t.particles) {
-    const confColors = [t.accent, '#ffffff', '#ff4444', '#4488ff', t.mid];
-    confettiSeeds.forEach(seed => {
-      ctx.save();
-      ctx.globalAlpha = 0.55;
-      ctx.fillStyle = confColors[seed.c];
-      ctx.translate(seed.x * S, seed.y * S);
-      ctx.rotate(seed.a);
-      const r = seed.r * scale;
-      ctx.fillRect(-r, -r * 2.5, r * 2, r * 5);
-      ctx.restore();
-    });
-  }
-
-  // ── Top accent bar ──
-  const topH = px(80);
+  // ── Top bar ──
+  const topH = px(86);
   const topG = ctx.createLinearGradient(0, 0, S, 0);
   topG.addColorStop(0, t.accent);
   topG.addColorStop(1, t.dark);
   ctx.fillStyle = topG;
   ctx.fillRect(0, 0, S, topH);
 
-  // Logo in top bar
   if (logoImg) {
-    const lh = px(54);
-    const lw = logoImg.width * (lh / logoImg.height);
-    const maxW = S * 0.45;
-    const dw = Math.min(lw, maxW);
-    const dh = logoImg.height * (dw / logoImg.width);
+    const lh = px(58); const lw = logoImg.width * (lh / logoImg.height);
+    const dw = Math.min(lw, S * 0.45); const dh = logoImg.height * (dw / logoImg.width);
     ctx.drawImage(logoImg, px(18), (topH - dh) / 2, dw, dh);
   } else {
-    ctx.fillStyle = '#0d1117';
-    ctx.font = `bold ${px(20)}px system-ui,sans-serif`;
+    ctx.fillStyle = '#0d1117'; ctx.font = `bold ${px(22)}px system-ui,sans-serif`;
     ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
     ctx.fillText('OPERATION eMOTORSPORT', px(18), topH / 2);
   }
 
-  // Season badge top-right
-  const badgeW = px(130), badgeH = px(38), badgeX = S - badgeW - px(18), badgeY = (topH - badgeH) / 2;
+  // Season badge
+  const bW = px(138), bH = px(40), bX = S - bW - px(18), bY0 = (topH - bH) / 2;
   ctx.fillStyle = 'rgba(0,0,0,0.35)';
-  ctx.beginPath(); ctx.roundRect(badgeX, badgeY, badgeW, badgeH, px(8)); ctx.fill();
-  ctx.fillStyle = '#0d1117';
-  ctx.font = `bold ${px(14)}px system-ui,sans-serif`;
+  ctx.beginPath(); ctx.roundRect(bX, bY0, bW, bH, px(8)); ctx.fill();
+  ctx.fillStyle = '#0d1117'; ctx.font = `bold ${px(15)}px system-ui,sans-serif`;
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText('SEASON 13', badgeX + badgeW / 2, topH / 2);
+  ctx.fillText('SEASON 13', bX + bW / 2, topH / 2);
 
-  // ── Big position label ──
+  // ── Giant position label ──
   ctx.save();
-  ctx.shadowColor = t.glow;
-  ctx.shadowBlur  = px(60);
-  const posG = ctx.createLinearGradient(0, px(90), 0, px(340));
+  ctx.shadowColor = t.glow; ctx.shadowBlur = px(70);
+  const posG = ctx.createLinearGradient(0, px(86), 0, px(360));
   posG.addColorStop(0, '#ffffff');
-  posG.addColorStop(0.3, t.accent);
+  posG.addColorStop(0.25, t.accent);
   posG.addColorStop(1, t.mid);
   ctx.fillStyle = posG;
-  ctx.font = `900 ${px(260)}px 'Arial Black',Arial,sans-serif`;
+  ctx.font = `900 ${px(290)}px 'Arial Black',Arial,sans-serif`;
   ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-  ctx.fillText(t.label, S / 2, px(76));
+  ctx.fillText(t.label, S / 2, px(80));
   ctx.restore();
 
-  // ── TITLE TEXT under position ──
+  // ── Title text ──
   ctx.fillStyle = t.accent;
-  ctx.font = `bold ${px(22)}px system-ui,sans-serif`;
+  ctx.font = `bold ${px(30)}px system-ui,sans-serif`;
   ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
-  // Letter spacing simulation
-  const titleText = t.title;
-  ctx.letterSpacing = `${px(4)}px`;
-  ctx.fillText(titleText, S / 2, px(368));
+  ctx.letterSpacing = `${px(6)}px`;
+  ctx.fillText(t.title, S / 2, px(390));
   ctx.letterSpacing = '0px';
 
   // ── Divider ──
-  const divY = px(386);
-  const divG = ctx.createLinearGradient(px(80), 0, S - px(80), 0);
+  const divY = px(412);
+  const divG = ctx.createLinearGradient(px(60), 0, S - px(60), 0);
   divG.addColorStop(0, 'transparent');
-  divG.addColorStop(0.15, t.accent);
-  divG.addColorStop(0.85, t.accent);
+  divG.addColorStop(0.12, t.accent);
+  divG.addColorStop(0.88, t.accent);
   divG.addColorStop(1, 'transparent');
-  ctx.strokeStyle = divG;
-  ctx.lineWidth = px(2);
-  ctx.beginPath(); ctx.moveTo(px(80), divY); ctx.lineTo(S - px(80), divY); ctx.stroke();
+  ctx.strokeStyle = divG; ctx.lineWidth = px(2.5);
+  ctx.beginPath(); ctx.moveTo(px(60), divY); ctx.lineTo(S - px(60), divY); ctx.stroke();
 
-  // ── Driver number circle (left of name) ──
-  const ncy = px(430), ncx = px(110), ncr = px(48);
+  // ── Number circle ──
+  const ncy = px(468), ncx = px(118), ncr = px(54);
   ctx.save();
-  ctx.shadowColor = t.glow; ctx.shadowBlur = px(20);
+  ctx.shadowColor = t.glow; ctx.shadowBlur = px(24);
   ctx.beginPath(); ctx.arc(ncx, ncy, ncr, 0, Math.PI * 2);
-  const circG = ctx.createRadialGradient(ncx, ncy - px(10), px(5), ncx, ncy, ncr);
+  const circG = ctx.createRadialGradient(ncx, ncy - px(12), px(6), ncx, ncy, ncr);
   circG.addColorStop(0, t.accent); circG.addColorStop(1, t.dark);
   ctx.fillStyle = circG; ctx.fill(); ctx.restore();
   ctx.fillStyle = '#0d1117';
-  const numSize = num.length > 2 ? px(28) : px(36);
-  ctx.font = `bold ${numSize}px 'Arial Black',Arial,sans-serif`;
+  const numSz = num.length > 2 ? px(32) : px(42);
+  ctx.font = `bold ${numSz}px 'Arial Black',Arial,sans-serif`;
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillText(num, ncx, ncy);
 
   // ── Driver name ──
-  const nameX = px(174);
-  ctx.fillStyle = 'rgba(255,255,255,0.65)';
-  ctx.font = `300 ${px(22)}px system-ui,sans-serif`;
+  const nameX = px(188);
+  ctx.fillStyle = 'rgba(255,255,255,0.7)';
+  ctx.font = `300 ${px(28)}px system-ui,sans-serif`;
   ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
-  ctx.fillText(first.toUpperCase(), nameX, ncy - px(18));
+  ctx.fillText(first.toUpperCase(), nameX, ncy - px(20));
 
   ctx.save();
-  ctx.shadowColor = 'rgba(0,0,0,0.6)'; ctx.shadowBlur = px(8);
+  ctx.shadowColor = 'rgba(0,0,0,0.7)'; ctx.shadowBlur = px(10);
   ctx.fillStyle = '#ffffff';
-  let ls = px(52);
+  let ls = px(64);
   ctx.font = `bold ${ls}px 'Arial Black',Arial,sans-serif`;
-  while (ctx.measureText(last.toUpperCase()).width > S - nameX - px(20) && ls > px(24)) {
-    ls -= px(2);
-    ctx.font = `bold ${ls}px 'Arial Black',Arial,sans-serif`;
+  while (ctx.measureText(last.toUpperCase()).width > S - nameX - px(24) && ls > px(28)) {
+    ls -= px(2); ctx.font = `bold ${ls}px 'Arial Black',Arial,sans-serif`;
   }
   ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
-  ctx.fillText(last.toUpperCase(), nameX, ncy + px(30));
+  ctx.fillText(last.toUpperCase(), nameX, ncy + px(38));
   ctx.restore();
 
   // ── Class badges ──
-  const bc = CLASS_COLORS[dClass] || t.accent;
-  const bY = ncy + px(48);
+  const bc  = CLASS_COLORS[dClass] || t.accent;
+  const badY = ncy + px(58);
   ctx.fillStyle = bc + '33';
-  ctx.beginPath(); ctx.roundRect(nameX, bY, px(110), px(26), px(13)); ctx.fill();
+  ctx.beginPath(); ctx.roundRect(nameX, badY, px(122), px(30), px(15)); ctx.fill();
   ctx.strokeStyle = bc; ctx.lineWidth = px(1.5); ctx.stroke();
-  ctx.fillStyle = bc;
-  ctx.font = `bold ${px(12)}px system-ui,sans-serif`;
+  ctx.fillStyle = bc; ctx.font = `bold ${px(13)}px system-ui,sans-serif`;
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText(dClass.toUpperCase(), nameX + px(55), bY + px(13));
+  ctx.fillText(dClass.toUpperCase(), nameX + px(61), badY + px(15));
   if (cClass) {
-    const ccX = nameX + px(118);
+    const ccX = nameX + px(130);
     ctx.fillStyle = 'rgba(255,255,255,0.07)';
-    ctx.beginPath(); ctx.roundRect(ccX, bY, px(54), px(26), px(13)); ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,0.18)'; ctx.lineWidth = px(1); ctx.stroke();
-    ctx.fillStyle = '#e6edf3';
-    ctx.font = `bold ${px(12)}px system-ui,sans-serif`;
+    ctx.beginPath(); ctx.roundRect(ccX, badY, px(60), px(30), px(15)); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.2)'; ctx.lineWidth = px(1); ctx.stroke();
+    ctx.fillStyle = '#e6edf3'; ctx.font = `bold ${px(13)}px system-ui,sans-serif`;
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(cClass, ccX + px(27), bY + px(13));
+    ctx.fillText(cClass, ccX + px(30), badY + px(15));
   }
 
   // ── Info section ──
-  const infoY = px(540);
-  const infoG = ctx.createLinearGradient(0, infoY - px(20), 0, infoY + px(160));
-  infoG.addColorStop(0, 'transparent');
-  infoG.addColorStop(0.3, 'rgba(255,255,255,0.03)');
-  infoG.addColorStop(1, 'rgba(255,255,255,0.05)');
-  ctx.fillStyle = infoG;
-  ctx.fillRect(0, infoY - px(20), S, px(190));
-
-  // Info items - build list based on what's shown
+  const infoY = px(590);
   const infoItems = [
-    { label: 'RACE',  value: race },
-    { label: 'TEAM',  value: team },
-    { label: 'CAR',   value: car  },
+    { label: 'RACE', value: race },
+    { label: 'TEAM', value: team },
+    { label: 'CAR',  value: car  },
   ];
-  if (fl)  infoItems.push({ label: 'FASTEST LAP', value: '⚡ ' + fl,  color: '#f85149' });
-  if (gap) infoItems.push({ label: 'INTERVAL',    value: gap });
 
-  const cols = infoItems.length <= 3 ? 1 : 2;
+  const cols = 1;
   const colW = S / cols;
 
   infoItems.forEach((item, i) => {
-    const col = i % cols;
-    const row = Math.floor(i / cols);
-    const ix  = col * colW + px(24);
-    const iy  = infoY + row * px(60);
-
+    const col = i % cols, row = Math.floor(i / cols);
+    const ix = col * colW + px(28);
+    const iy = infoY + row * px(70);
     ctx.fillStyle = item.color || t.accent;
-    ctx.font = `bold ${px(11)}px system-ui,sans-serif`;
+    ctx.font = `bold ${px(13)}px system-ui,sans-serif`;
     ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
     ctx.fillText(item.label, ix, iy);
-
     ctx.fillStyle = '#e6edf3';
-    let vs = px(18); ctx.font = `bold ${vs}px system-ui,sans-serif`;
-    while (ctx.measureText(item.value).width > colW - px(48) && vs > px(11)) {
+    let vs = px(22); ctx.font = `bold ${vs}px system-ui,sans-serif`;
+    while (ctx.measureText(item.value).width > colW - px(56) && vs > px(13)) {
       vs -= px(1); ctx.font = `bold ${vs}px system-ui,sans-serif`;
     }
-    ctx.fillText(item.value, ix, iy + px(22));
+    ctx.fillText(item.value, ix, iy + px(26));
   });
 
   // ── Bottom bar ──
-  const botH = px(58), botY = S - botH;
+  const botH = px(64), botY = S - botH;
   const botG = ctx.createLinearGradient(0, 0, S, 0);
   botG.addColorStop(0, t.dark); botG.addColorStop(1, t.accent);
-  ctx.fillStyle = botG;
-  ctx.fillRect(0, botY, S, botH);
-
-  ctx.fillStyle = '#0d1117';
-  ctx.font = `bold ${px(13)}px system-ui,sans-serif`;
+  ctx.fillStyle = botG; ctx.fillRect(0, botY, S, botH);
+  ctx.fillStyle = '#0d1117'; ctx.font = `bold ${px(15)}px system-ui,sans-serif`;
   ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-  ctx.fillText('OPERATION eMOTORSPORT LEAGUE', px(20), botY + botH / 2);
-
-  ctx.fillStyle = 'rgba(0,0,0,0.4)';
-  ctx.font = `bold ${px(13)}px system-ui,sans-serif`;
+  ctx.fillText('OPERATION eMOTORSPORT LEAGUE', px(22), botY + botH / 2);
+  ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.font = `bold ${px(14)}px system-ui,sans-serif`;
   ctx.textAlign = 'right';
-  ctx.fillText('operationmotorsport.org', S - px(20), botY + botH / 2);
+  ctx.fillText('operationmotorsport.org', S - px(22), botY + botH / 2);
 
   // ── Border glow ──
   ctx.save();
-  ctx.strokeStyle = t.accent; ctx.lineWidth = px(3); ctx.globalAlpha = 0.5;
+  ctx.strokeStyle = t.accent; ctx.lineWidth = px(3); ctx.globalAlpha = 0.55;
   ctx.strokeRect(px(1.5), px(1.5), S - px(3), S - px(3));
   ctx.restore();
 }
