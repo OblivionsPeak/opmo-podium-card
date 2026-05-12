@@ -474,14 +474,14 @@ function drawCard(canvas, size) {
   // ── Giant position label ──
   ctx.save();
   ctx.shadowColor = t.glow; ctx.shadowBlur = px(70);
-  const posG = ctx.createLinearGradient(0, px(86), 0, px(360));
+  const posG = ctx.createLinearGradient(0, px(106), 0, px(380));
   posG.addColorStop(0, '#ffffff');
   posG.addColorStop(0.25, t.accent);
   posG.addColorStop(1, t.mid);
   ctx.fillStyle = posG;
   ctx.font = `900 ${px(290)}px 'Arial Black',Arial,sans-serif`;
   ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-  ctx.fillText(t.label, S / 2, px(80));
+  ctx.fillText(t.label, S / 2, px(106));
   ctx.restore();
 
   // ── Title text ──
