@@ -223,17 +223,17 @@ select:disabled { opacity: .45; cursor: default; }
         <label class="class-pill" onclick="selectClass('Beneficiary',this)">
           <input type="radio" name="dclass" value="Beneficiary">
           <span class="pill-name">Beneficiary</span>
-          <span class="pill-sub">LMP2 / GT3</span>
+          <span class="pill-sub">GT3</span>
         </label>
         <label class="class-pill" onclick="selectClass('Pro-Ben',this)">
           <input type="radio" name="dclass" value="Pro-Ben">
           <span class="pill-name">Pro-Ben</span>
-          <span class="pill-sub">GTP</span>
+          <span class="pill-sub">GT3</span>
         </label>
         <label class="class-pill" onclick="selectClass('Pro',this)">
           <input type="radio" name="dclass" value="Pro">
           <span class="pill-name">Pro</span>
-          <span class="pill-sub">GTP</span>
+          <span class="pill-sub">GT3</span>
         </label>
         <label class="class-pill" onclick="selectClass('Open',this)">
           <input type="radio" name="dclass" value="Open">
@@ -243,29 +243,10 @@ select:disabled { opacity: .45; cursor: default; }
       </div>
     </div>
 
-    <!-- Car Class + Car -->
     <div class="form-group">
-      <label>Car Class</label>
-      <div class="class-group" id="carclass-group">
-        <label class="class-pill" onclick="selectCarClass('GTP',this)">
-          <input type="radio" name="carclass" value="GTP">
-          <span class="pill-name">GTP</span>
-        </label>
-        <label class="class-pill" onclick="selectCarClass('LMP2',this)">
-          <input type="radio" name="carclass" value="LMP2">
-          <span class="pill-name">LMP2</span>
-        </label>
-        <label class="class-pill" onclick="selectCarClass('GT3',this)">
-          <input type="radio" name="carclass" value="GT3">
-          <span class="pill-name">GT3</span>
-        </label>
-      </div>
-    </div>
-
-    <div class="form-group">
-      <label for="car-select">Car</label>
-      <select id="car-select" onchange="render()" disabled>
-        <option value="">— Select car class first —</option>
+      <label for="car-select">Car <span style="color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0">GT3</span></label>
+      <select id="car-select" onchange="render()">
+        <option value="">— Select your car —</option>
       </select>
     </div>
 
@@ -284,9 +265,7 @@ select:disabled { opacity: .45; cursor: default; }
 <script>
 // ── Data ──────────────────────────────────────────────────────────────────────
 const CARS = {
-  GTP:  ['Acura ARX-06 GTP','Cadillac V-Series.R GTP','Porsche 963 GTP','BMW M Hybrid V8 GTP','Ferrari 499P','Lamborghini SC63 GTP','Toyota GR010 Hybrid'],
-  LMP2: ['Dallara P217 LMP2'],
-  GT3:  ['Aston Martin Vantage GT3','BMW M4 GT3','Chevrolet Corvette Z06 GT3.R','Ferrari 296 GT3','Ford Mustang GT3','Lamborghini Huracán GT3 EVO2','McLaren 720S GT3 EVO','Mercedes-AMG GT3 EVO','Porsche 992 GT3 R','Audi R8 LMS GT3 EVO II']
+  GT3: ['Aston Martin Vantage GT3','BMW M4 GT3','Chevrolet Corvette Z06 GT3.R','Ferrari 296 GT3','Ford Mustang GT3','Lamborghini Huracán GT3 EVO2','McLaren 720S GT3 EVO','Mercedes-AMG GT3 EVO','Porsche 992 GT3 R','Audi R8 LMS GT3 EVO II']
 };
 
 const POS_THEMES = {
@@ -327,7 +306,7 @@ const CLASS_COLORS = { 'Beneficiary':'#3fb950','Pro-Ben':'#58a6ff','Pro':'#f8514
 // ── State ─────────────────────────────────────────────────────────────────────
 let selectedPos      = 1;
 let selectedClass    = '';
-let selectedCarClass = '';
+let selectedCarClass = 'GT3';
 let logoImg          = null;
 let confettiSeeds    = generateSeeds(60);
 
@@ -357,15 +336,14 @@ function selectClass(val, el) {
   el.classList.add('selected');
   render();
 }
-function selectCarClass(val, el) {
+function selectCarClass(val) {
   selectedCarClass = val;
-  document.querySelectorAll('#carclass-group .class-pill').forEach(p => p.classList.remove('selected'));
-  el.classList.add('selected');
   const sel = document.getElementById('car-select');
-  sel.disabled = false;
-  sel.innerHTML = CARS[val].map(c => `<option value="${c}">${c}</option>`).join('');
+  sel.innerHTML = '<option value="">— Select your car —</option>' +
+    CARS[val].map(c => `<option value="${c}">${c}</option>`).join('');
   render();
 }
+selectCarClass('GT3');
 // ── Render ────────────────────────────────────────────────────────────────────
 const PREVIEW_SIZE = 540;
 const FULL_SIZE    = 1080;
